@@ -597,12 +597,9 @@ let pedidos   = [];
 //  API — COMUNICACIÓN CON APPS SCRIPT
 // ================================================================
 async function api(action, body = {}) {
-  const payload = { action, ...body };
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { 'Content-Type': 'text/plain' }  // evita CORS preflight
-  });
+  const payload = JSON.stringify({ action, ...body });
+  const url = SCRIPT_URL + '?payload=' + encodeURIComponent(payload);
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Error de red: ' + res.status);
   const json = await res.json();
   if (json.error) throw new Error(json.error);
