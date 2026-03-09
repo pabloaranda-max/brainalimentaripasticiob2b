@@ -819,7 +819,7 @@ async function cargarTodo() {
   const data = await api('getAll');
   clientes  = data.clientes  || [];
   productos = data.productos || [];
-  pedidos   = data.pedidos   || [];
+  pedidos   = (data.pedidos || []).filter(p => p.estado !== 'cancelado' && p.estado !== 'Cancelado');
   // Normalizar tipos
   clientes.forEach(c => { c.id = String(c.id); });
   productos.forEach(p => { p.id = String(p.id); p.precio = Number(p.precio); p.disponible = Number(p.disponible); });
