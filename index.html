@@ -826,6 +826,7 @@ async function cargarTodo() {
   pedidos.forEach(p => {
     p.id = String(p.id);
     p.clienteId = String(p.clienteId);
+    if (typeof p.items === 'string') { try { p.items = JSON.parse(p.items); } catch(e) { p.items = []; } }
     if (!Array.isArray(p.items)) p.items = [];
     p.items.forEach(i => { i.productoId = String(i.productoId); i.qty = Number(i.qty); });
     if (!p.factura)     p.factura     = 'Sin factura';
