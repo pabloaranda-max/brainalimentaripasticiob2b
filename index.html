@@ -51,6 +51,7 @@
   body.dark .status-recibido    { background: rgba(92,107,48,0.25);  color: #B0C878; }
   body.dark .status-preparando  { background: rgba(201,147,58,0.25); color: #DDB068; }
   body.dark .status-entregado   { background: rgba(92,107,48,0.30);  color: #B0C878; }
+  body.dark .status-cancelado   { background: rgba(196,97,58,0.25);  color: #E88A6A; }
   body.dark .status-pendiente   { background: rgba(125,43,43,0.30);  color: #D08080; }
   body.dark .status-pagado      { background: rgba(92,107,48,0.30);  color: #B0C878; }
   body.dark .status-facturado   { background: rgba(92,107,48,0.30);  color: #B0C878; }
@@ -312,6 +313,7 @@
   .status-recibido    { background: rgba(92,107,48,0.12);  color: #3D4A18; }
   .status-preparando  { background: rgba(201,147,58,0.18); color: #7A5410; }
   .status-entregado   { background: rgba(92,107,48,0.22);  color: #2E3A10; }
+  .status-cancelado   { background: rgba(125,43,43,0.12);  color: #7D2B2B; }
   .status-pendiente   { background: rgba(125,43,43,0.14);  color: #7D2B2B; }
   .status-pagado      { background: rgba(92,107,48,0.22);  color: #2E3A10; }
   .status-facturado   { background: rgba(92,107,48,0.22);  color: #2E3A10; }
@@ -819,7 +821,7 @@ async function cargarTodo() {
   const data = await api('getAll');
   clientes  = data.clientes  || [];
   productos = data.productos || [];
-  pedidos   = (data.pedidos || []).filter(p => p.estado !== 'cancelado' && p.estado !== 'Cancelado');
+  pedidos   = (data.pedidos || []).filter(p => p.estado !== 'borrado');
   // Normalizar tipos
   clientes.forEach(c => { c.id = String(c.id); });
   productos.forEach(p => { p.id = String(p.id); p.precio = Number(p.precio); p.disponible = Number(p.disponible); });
@@ -972,7 +974,7 @@ function renderPedidos() {
     const cli          = getCliente(p.clienteId);
     const total        = calcTotal(p.items);
     const resumen      = p.resumen || p.items.map(i => { const pr = getProducto(i.productoId); return pr ? `${pr.nombre} ×${i.qty}` : ''; }).filter(Boolean).join(', ');
-    const estadoClass  = { 'Recibido': 'status-recibido', 'Preparando': 'status-preparando', 'Entregado': 'status-entregado' }[p.estado] || 'status-recibido';
+    const estadoClass  = { 'Recibido': 'status-recibido', 'Preparando': 'status-preparando', 'Entregado': 'status-entregado', 'Cancelado': 'status-cancelado' }[p.estado] || 'status-recibido';
     const pagoClass    = p.pago === 'Pagado' ? 'status-pagado' : 'status-pendiente';
     const facturaClass = p.factura === 'Facturada' ? 'status-facturado' : 'status-sin-factura';
     const selectStyle  = "border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;appearance:none;padding:3px 9px;border-radius:2px";
@@ -992,6 +994,7 @@ function renderPedidos() {
           <option ${p.estado==='Recibido'?'selected':''}>Recibido</option>
           <option ${p.estado==='Preparando'?'selected':''}>Preparando</option>
           <option ${p.estado==='Entregado'?'selected':''}>Entregado</option>
+          <option ${p.estado==='Cancelado'?'selected':''}>Cancelado</option>
         </select>
       </td>
       <td>
