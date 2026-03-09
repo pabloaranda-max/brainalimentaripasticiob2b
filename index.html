@@ -797,32 +797,26 @@ let productos = [];
 let pedidos   = [];
 
 // ================================================================
-//  API — fetch con credentials:omit (evita cookies Google → sin redirect login)
+//  API — Cloudflare Worker
 // ================================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2ofRxbXayOnxnl4LGri9Mcq4UEcN-H_TDgo2wVfpl_vhbu1VuzV6Zxu9sc-drpU9I/exec';
+const API_URL = 'https://piazza-api.pablo-aranda.workers.dev';
 
 async function api(action, body = {}) {
   if (action === 'getAll') {
-    const r = await fetch(SCRIPT_URL + '?action=getAll', { credentials: 'omit' });
-    const data = await r.json();
-    if (data.error) throw new Error('BD: ' + data.error);
-    return data;
+    const res = await fetch(`${API_URL}?action=getAll`);
+    return res.json();
   }
-  // Escrituras: no-cors + credentials omit
-  fetch(SCRIPT_URL, {
+  const res = await fetch(API_URL, {
     method: 'POST',
-    mode: 'no-cors',
-    credentials: 'omit',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action, ...body })
-  }).catch(() => {});
-  return { ok: true };
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...body }),
+  });
+  return res.json();
 }
 
 // Carga inicial — trae los tres catálogos de una vez
 async function cargarTodo() {
   const data = await api('getAll');
-  if (data.error) throw new Error('BD: ' + data.error);
   clientes  = data.clientes  || [];
   productos = data.productos || [];
   pedidos   = data.pedidos   || [];
@@ -837,7 +831,7 @@ async function cargarTodo() {
     if (!p.factura)     p.factura     = 'Sin factura';
     if (!p.fechaPedido) p.fechaPedido = '';
     if (!p.mes)         p.mes         = p.fechaPedido ? p.fechaPedido.slice(0,7) : '';
-    if (!p.resumen)     p.resumen     = p.items.map(i => {
+    p.resumen = p.items.map(i => {
       const pr = productos.find(x => x.id === i.productoId);
       return pr ? `${pr.nombre} ×${i.qty}` : `×${i.qty}`;
     }).join(', ');
