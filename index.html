@@ -820,11 +820,11 @@ async function api(action, body = {}) {
 async function cargarTodo() {
   const data = await api('getAll');
   clientes  = data.clientes  || [];
-  productos = data.productos || [];
+  productos = (data.productos || []).filter(p => p.disponible !== 'borrado');
   pedidos   = (data.pedidos || []).filter(p => p.estado !== 'borrado');
   // Normalizar tipos
   clientes.forEach(c => { c.id = String(c.id); });
-  productos.forEach(p => { p.id = String(p.id); p.precio = Number(p.precio); p.disponible = Number(p.disponible); });
+  productos.forEach(p => { p.id = String(p.id); p.precio = Number(p.precio); p.disponible = p.disponible === '1' || p.disponible === 1 || p.disponible === true ? 1 : 0; });
   pedidos.forEach(p => {
     p.id = String(p.id);
     p.clienteId = String(p.clienteId);
