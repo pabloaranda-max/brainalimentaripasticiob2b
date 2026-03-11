@@ -914,6 +914,14 @@ function logout() {
   location.reload();
 }
 
+function compartirDireccion(clienteId) {
+  const cli = getCliente(clienteId);
+  if (!cli || !cli.dir) return;
+  const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(cli.dir);
+  const texto = `📍 *${cli.nombre}*\n${cli.dir}\n${mapsUrl}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+}
+
 function mostrarSyncTs() {
   const ts = localStorage.getItem('syncTs');
   const el = document.getElementById('sync-ts');
@@ -1191,6 +1199,7 @@ function renderPedidos() {
       </td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="editarPedido('${p.id}')" style="margin-right:4px">✎</button>
+        ${cli && cli.dir ? `<button class="btn btn-sm" onclick="compartirDireccion('${p.clienteId}')" style="margin-right:4px;border-color:#25D366;color:#25D366" title="Compartir dirección por WhatsApp">📍</button>` : ''}
         <button class="btn btn-sm" onclick="eliminarPedido('${p.id}')" style="border-color:var(--cochinilla);color:var(--cochinilla)">✕</button>
       </td>
     </tr>`;
