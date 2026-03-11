@@ -607,10 +607,10 @@
     </div>
     <button id="modo-btn" onclick="toggleModo()"
       style="background:none;border:1px solid rgba(245,240,232,0.3);color:var(--cream);font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
-      title="Cambiar modo">☀</button>
+      title="Cambiar modo">Light mode</button>
     <button onclick="logout()"
       style="background:none;border:1px solid rgba(245,240,232,0.3);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
-      title="Cerrar sesión">✕</button>
+      title="Cerrar sesión">Log out</button>
   </div>
 </header>
 
@@ -996,7 +996,7 @@ function formatMXN(n) {
 // ================================================================
 function toggleModo() {
   const dark = document.body.classList.toggle('dark');
-  document.getElementById('modo-btn').textContent = dark ? '☾' : '☀';
+  document.getElementById('modo-btn').textContent = dark ? 'Light mode' : 'Dark mode';
   localStorage.setItem('modo', dark ? 'dark' : 'light');
 }
 
