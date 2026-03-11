@@ -963,7 +963,7 @@ function compartirDireccion(clienteId) {
             const p = _preds[+el.dataset.i];
             if (!p) return;
             input.value = p.text?.text || input.value;
-            document.getElementById('cli-mapsUrl').value = `https://maps.google.com/?q=place_id:${p.placeId}`;
+            document.getElementById('cli-mapsUrl').value = `https://www.google.com/maps/search/?api=1&query_place_id=${p.placeId}`;
             box.style.display = 'none';
           });
         });
