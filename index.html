@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alimentari – Pedidos B2B</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* vietnamese */
 @font-face { font-family: 'Barlow'; font-style: normal; font-weight: 400; src: url(https://fonts.gstatic.com/s/barlow/v13/7cHpv4kjgoGqM7E_DMs5.woff2) format('woff2'); }
@@ -68,6 +69,36 @@
     color: var(--dark);
     min-height: 100vh;
     transition: background 0.3s, color 0.3s;
+  }
+
+  /* LOGIN */
+  #login-overlay {
+    position: fixed; inset: 0;
+    background: var(--dark);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10000;
+    gap: 24px;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-logo {
+    font-family: 'Great Vibes', cursive;
+    font-size: 2.5rem;
+    color: var(--cream);
+  }
+  .login-logo span { color: var(--gold); }
+  .login-subtitle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .login-error {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--cochinilla);
+    display: none;
   }
 
   /* LOADING OVERLAY */
@@ -535,6 +566,25 @@
 </head>
 <body>
 
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-logo">Aliment<span>ari</span></div>
+  <div class="login-subtitle">Pedidos B2B — Acceso restringido</div>
+  <div id="g_id_onload"
+    data-client_id="550919074991-snkpplsptl9h2p5o2op4226hss7k0uej.apps.googleusercontent.com"
+    data-callback="onGoogleLogin"
+    data-auto_prompt="false">
+  </div>
+  <div class="g_id_signin"
+    data-type="standard"
+    data-theme="outline"
+    data-text="signin_with"
+    data-shape="rectangular"
+    data-logo_alignment="left">
+  </div>
+  <div class="login-error" id="login-error">No tienes acceso. Contacta al administrador.</div>
+</div>
+
 <!-- LOADING OVERLAY -->
 <div id="loading-overlay">
   <div class="loading-logo">Aliment<span>ari</span></div>
@@ -558,6 +608,9 @@
     <button id="modo-btn" onclick="toggleModo()"
       style="background:none;border:1px solid rgba(245,240,232,0.3);color:var(--cream);font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
       title="Cambiar modo">☀</button>
+    <button onclick="logout()"
+      style="background:none;border:1px solid rgba(245,240,232,0.3);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
+      title="Cerrar sesión">✕</button>
   </div>
 </header>
 
@@ -828,26 +881,58 @@ let productos = [];
 let pedidos   = [];
 
 // ================================================================
-//  API — fetch con credentials:omit (evita cookies Google → sin redirect login)
+//  AUTH — Google Identity Services
 // ================================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2ofRxbXayOnxnl4LGri9Mcq4UEcN-H_TDgo2wVfpl_vhbu1VuzV6Zxu9sc-drpU9I/exec';
+const API_URL = 'https://piazza-api.pablo-aranda.workers.dev';
+let idToken = sessionStorage.getItem('idToken') || '';
 
+async function onGoogleLogin(response) {
+  const token = response.credential;
+  try {
+    const r = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', idToken: token })
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      document.getElementById('login-error').style.display = 'block';
+      return;
+    }
+    idToken = token;
+    sessionStorage.setItem('idToken', token);
+    document.getElementById('login-overlay').classList.add('hidden');
+    iniciarApp();
+  } catch (e) {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('idToken');
+  idToken = '';
+  location.reload();
+}
+
+// ================================================================
+//  API
+// ================================================================
 async function api(action, body = {}) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken };
   if (action === 'getAll') {
-    const r = await fetch(SCRIPT_URL + '?action=getAll', { credentials: 'omit' });
+    const r = await fetch(API_URL + '?action=getAll', { headers });
+    if (r.status === 401 || r.status === 403) { logout(); return; }
     const data = await r.json();
     if (data.error) throw new Error('BD: ' + data.error);
     return data;
   }
-  // Escrituras: no-cors + credentials omit
-  fetch(SCRIPT_URL, {
+  const r = await fetch(API_URL, {
     method: 'POST',
-    mode: 'no-cors',
-    credentials: 'omit',
-    headers: { 'Content-Type': 'text/plain' },
+    headers,
     body: JSON.stringify({ action, ...body })
-  }).catch(() => {});
-  return { ok: true };
+  });
+  if (r.status === 401 || r.status === 403) { logout(); return; }
+  return r.json();
 }
 
 // Carga inicial — trae los tres catálogos de una vez
@@ -1569,7 +1654,7 @@ function renderAll() {
 // ================================================================
 //  INIT — carga datos al abrir
 // ================================================================
-(async () => {
+async function iniciarApp() {
   const overlay = document.getElementById('loading-overlay');
   try {
     await cargarTodo();
@@ -1578,10 +1663,19 @@ function renderAll() {
     document.querySelector('.loading-text').textContent = 'Error al conectar con la base de datos';
     document.querySelector('.loading-text').style.color = '#C4613A';
     console.error(e);
-    return; // no ocultar overlay si hay error de conexión
+    return;
   }
   overlay.classList.add('hidden');
-  setTimeout(() => overlay.style.display = 'none', 400);
+}
+
+(async () => {
+  if (idToken) {
+    // ya hay sesión guardada → iniciar directo
+    iniciarApp();
+  } else {
+    // mostrar login, ocultar loading
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }
 })();
 </script>
 </body>
