@@ -604,6 +604,9 @@
       <button class="tab-btn" onclick="showTab('clientes', this)">Clientes</button>
       <button class="tab-btn" onclick="showTab('productos', this)">Productos</button>
     </div>
+    <button id="sync-btn" onclick="generarMaster()"
+      style="background:none;border:1px solid rgba(245,240,232,0.3);color:#C4B8A8;font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
+      title="Sincronizar D1 → Sheets">Generar Master</button>
     <button id="modo-btn" onclick="toggleModo()"
       style="background:none;border:1px solid rgba(245,240,232,0.3);color:#F2EDE4;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;padding:8px 12px;cursor:pointer;transition:all 0.2s"
       title="Cambiar modo">Light mode</button>
@@ -911,6 +914,25 @@ function logout() {
   sessionStorage.removeItem('idToken');
   idToken = '';
   location.reload();
+}
+
+async function generarMaster() {
+  const btn = document.getElementById('sync-btn');
+  btn.textContent = 'Sincronizando…';
+  btn.disabled = true;
+  try {
+    const res = await api({ action: 'syncSheets' });
+    if (res.ok) {
+      btn.textContent = '✓ Master actualizado';
+      setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
+    } else {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
+    }
+  } catch(e) {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
+  }
 }
 
 // ================================================================
