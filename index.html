@@ -921,7 +921,7 @@ async function generarMaster() {
   btn.textContent = 'Sincronizando…';
   btn.disabled = true;
   try {
-    const res = await api({ action: 'syncSheets' });
+    const res = await api('syncSheets');
     if (res.ok) {
       btn.textContent = '✓ Master actualizado';
       setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
