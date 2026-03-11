@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alimentari – Pedidos B2B</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDe1XwADgLj5zZXLHjRAmQR57Yfred7V2w&libraries=places&language=es" async defer></script>
 <style>
 /* vietnamese */
 @font-face { font-family: 'Barlow'; font-style: normal; font-weight: 400; src: url(https://fonts.gstatic.com/s/barlow/v13/7cHpv4kjgoGqM7E_DMs5.woff2) format('woff2'); }
@@ -806,8 +807,7 @@
         </div>
         <div class="form-group full" style="position:relative">
           <label>Dirección de entrega</label>
-          <input type="text" id="cli-dir" placeholder="Empieza a escribir la dirección…" autocomplete="off" oninput="buscarDireccion(this.value)">
-          <div id="dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--light-border);border-radius:4px;z-index:999;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15)"></div>
+          <input type="text" id="cli-dir" placeholder="Empieza a escribir la dirección…" autocomplete="off">
           <input type="hidden" id="cli-mapsUrl">
         </div>
         <div class="form-group full">
@@ -924,40 +924,28 @@ function compartirDireccion(clienteId) {
   window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
 }
 
-let _dirTimer = null;
-async function buscarDireccion(q) {
-  const box = document.getElementById('dir-suggestions');
-  if (q.length < 4) { box.style.display = 'none'; return; }
-  clearTimeout(_dirTimer);
-  _dirTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=mx`, { headers: { 'Accept-Language': 'es' } });
-      const data = await res.json();
-      if (!data.length) { box.style.display = 'none'; return; }
-      box.innerHTML = data.map(r => `
-        <div onclick="seleccionarDireccion(${r.lat},${r.lon})"
-          style="padding:10px 12px;cursor:pointer;font-size:0.75rem;border-bottom:1px solid var(--light-border);line-height:1.3"
-          onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
-          📍 ${r.display_name}
-        </div>`).join('');
-      box.style.display = 'block';
-    } catch(e) { box.style.display = 'none'; }
-  }, 400);
-}
-
-function seleccionarDireccion(lat, lon) {
-  // Conserva el texto que escribió el usuario (con número incluido)
-  // pero guarda coordenadas exactas para el link de Maps
-  document.getElementById('cli-mapsUrl').value = `https://maps.google.com/?q=${lat},${lon}`;
-  document.getElementById('dir-suggestions').style.display = 'none';
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('#cli-dir') && !e.target.closest('#dir-suggestions')) {
-    const box = document.getElementById('dir-suggestions');
-    if (box) box.style.display = 'none';
+(function initDirAutocomplete() {
+  if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+    setTimeout(initDirAutocomplete, 300);
+    return;
   }
-});
+  const input = document.getElementById('cli-dir');
+  const ac = new google.maps.places.Autocomplete(input, {
+    componentRestrictions: { country: 'mx' },
+    fields: ['geometry', 'url'],
+    types: ['address'],
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (!place.geometry) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    document.getElementById('cli-mapsUrl').value = place.url || `https://maps.google.com/?q=${lat},${lng}`;
+  });
+  input.addEventListener('input', () => {
+    document.getElementById('cli-mapsUrl').value = '';
+  });
+})();
 
 function mostrarSyncTs() {
   const ts = localStorage.getItem('syncTs');
