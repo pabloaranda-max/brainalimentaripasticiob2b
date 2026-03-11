@@ -804,9 +804,11 @@
           <label>RFC</label>
           <input type="text" id="cli-rfc" placeholder="XAXX010101000">
         </div>
-        <div class="form-group full">
+        <div class="form-group full" style="position:relative">
           <label>Dirección de entrega</label>
-          <input type="text" id="cli-dir" placeholder="Calle, colonia, CDMX">
+          <input type="text" id="cli-dir" placeholder="Empieza a escribir la dirección…" autocomplete="off" oninput="buscarDireccion(this.value)">
+          <div id="dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--light-border);border-radius:4px;z-index:999;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15)"></div>
+          <input type="hidden" id="cli-mapsUrl">
         </div>
         <div class="form-group full">
           <label>Días de entrega</label>
@@ -917,10 +919,45 @@ function logout() {
 function compartirDireccion(clienteId) {
   const cli = getCliente(clienteId);
   if (!cli || !cli.dir) return;
-  const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(cli.dir);
+  const mapsUrl = cli.mapsUrl || 'https://maps.google.com/?q=' + encodeURIComponent(cli.dir);
   const texto = `📍 *${cli.nombre}*\n${cli.dir}\n${mapsUrl}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
 }
+
+let _dirTimer = null;
+async function buscarDireccion(q) {
+  const box = document.getElementById('dir-suggestions');
+  document.getElementById('cli-mapsUrl').value = '';
+  if (q.length < 4) { box.style.display = 'none'; return; }
+  clearTimeout(_dirTimer);
+  _dirTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=mx`, { headers: { 'Accept-Language': 'es' } });
+      const data = await res.json();
+      if (!data.length) { box.style.display = 'none'; return; }
+      box.innerHTML = data.map(r => `
+        <div onclick="seleccionarDireccion(${r.lat},${r.lon},'${r.display_name.replace(/'/g,"&#39;")}')"
+          style="padding:10px 12px;cursor:pointer;font-size:0.75rem;border-bottom:1px solid var(--light-border);line-height:1.3"
+          onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
+          📍 ${r.display_name}
+        </div>`).join('');
+      box.style.display = 'block';
+    } catch(e) { box.style.display = 'none'; }
+  }, 400);
+}
+
+function seleccionarDireccion(lat, lon, displayName) {
+  document.getElementById('cli-dir').value = displayName;
+  document.getElementById('cli-mapsUrl').value = `https://maps.google.com/?q=${lat},${lon}`;
+  document.getElementById('dir-suggestions').style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#cli-dir') && !e.target.closest('#dir-suggestions')) {
+    const box = document.getElementById('dir-suggestions');
+    if (box) box.style.display = 'none';
+  }
+});
 
 function mostrarSyncTs() {
   const ts = localStorage.getItem('syncTs');
@@ -1413,6 +1450,7 @@ function editarCliente(id) {
   document.getElementById('cli-email').value    = c.email    || '';
   document.getElementById('cli-rfc').value      = c.rfc      || '';
   document.getElementById('cli-dir').value      = c.dir      || '';
+  document.getElementById('cli-mapsUrl').value  = c.mapsUrl  || '';
   document.getElementById('cli-dias').value     = c.dias     || '';
   openModal('modal-cliente');
 }
@@ -1432,6 +1470,7 @@ async function guardarCliente() {
     email:    document.getElementById('cli-email').value,
     rfc:      document.getElementById('cli-rfc').value,
     dir:      document.getElementById('cli-dir').value,
+    mapsUrl:  document.getElementById('cli-mapsUrl').value,
     dias:     document.getElementById('cli-dias').value,
   };
 
