@@ -926,12 +926,15 @@ async function generarMaster() {
       btn.textContent = '✓ Master actualizado';
       setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
     } else {
-      btn.textContent = 'Error';
-      setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
+      const msg = res.error || 'Error desconocido';
+      console.error('syncSheets error:', msg);
+      btn.textContent = 'Error: ' + msg.slice(0, 30);
+      setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 5000);
     }
   } catch(e) {
-    btn.textContent = 'Error';
-    setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 3000);
+    console.error('syncSheets catch:', e);
+    btn.textContent = 'Error: ' + e.message.slice(0, 30);
+    setTimeout(() => { btn.textContent = 'Generar Master'; btn.disabled = false; }, 5000);
   }
 }
 
