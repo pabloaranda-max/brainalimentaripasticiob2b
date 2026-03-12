@@ -891,7 +891,8 @@ let pedidos   = [];
 //  AUTH — Google Identity Services
 // ================================================================
 const API_URL = 'https://piazza-api.pablo-aranda.workers.dev';
-let idToken = sessionStorage.getItem('idToken') || '';
+let sessionToken = localStorage.getItem('sessionToken') || '';
+let idToken = ''; // solo se usa durante el login
 
 async function onGoogleLogin(response) {
   const token = response.credential;
@@ -906,8 +907,8 @@ async function onGoogleLogin(response) {
       document.getElementById('login-error').style.display = 'block';
       return;
     }
-    idToken = token;
-    sessionStorage.setItem('idToken', token);
+    sessionToken = data.sessionToken;
+    localStorage.setItem('sessionToken', sessionToken);
     document.getElementById('login-overlay').classList.add('hidden');
     iniciarApp();
   } catch (e) {
@@ -916,8 +917,8 @@ async function onGoogleLogin(response) {
 }
 
 function logout() {
-  sessionStorage.removeItem('idToken');
-  idToken = '';
+  localStorage.removeItem('sessionToken');
+  sessionToken = '';
   location.reload();
 }
 
@@ -1012,7 +1013,7 @@ async function generarMaster() {
 //  API
 // ================================================================
 async function api(action, body = {}) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken };
+  const headers = { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken };
   if (action === 'getAll') {
     const r = await fetch(API_URL + '?action=getAll', { headers });
     if (r.status === 401 || r.status === 403) { logout(); return; }
@@ -1782,7 +1783,7 @@ async function iniciarApp() {
 }
 
 (async () => {
-  if (idToken) {
+  if (sessionToken) {
     // ya hay sesión guardada → iniciar directo
     iniciarApp();
   } else {
