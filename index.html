@@ -748,13 +748,27 @@
         <div class="section-title">Resumen</div>
         <div class="section-sub">Totales y tendencias B2B</div>
       </div>
-      <select id="resumen-periodo" onchange="renderResumen()"
-        style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
-        <option value="mes">Este mes</option>
-        <option value="3meses">Últimos 3 meses</option>
-        <option value="anio">Este año</option>
-        <option value="todo">Todo el tiempo</option>
-      </select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <select id="resumen-periodo" onchange="renderResumen()"
+          style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
+          <option value="mes">Este mes</option>
+          <option value="3meses">Últimos 3 meses</option>
+          <option value="anio">Este año</option>
+          <option value="todo">Todo el tiempo</option>
+        </select>
+        <select id="resumen-mes" onchange="renderResumen()"
+          style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
+          <option value="">Mes específico</option>
+        </select>
+        <select id="resumen-cliente" onchange="renderResumen()"
+          style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
+          <option value="">Todos los clientes</option>
+        </select>
+        <select id="resumen-producto" onchange="renderResumen()"
+          style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
+          <option value="">Todos los productos</option>
+        </select>
+      </div>
     </div>
 
     <div class="stats-row" id="resumen-stats" style="margin-bottom:32px">
@@ -2054,8 +2068,40 @@ function abrirHistorial(clienteId) {
 // ================================================================
 //  RESUMEN / DASHBOARD
 // ================================================================
+function populateResumenFiltros() {
+  const activos = pedidos.filter(p => p.estado !== 'Cancelado');
+  const nombres = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio',
+                    '07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+  const selMes = document.getElementById('resumen-mes');
+  const currentMes = selMes?.value || '';
+  const mesesDisp = [...new Set(activos.map(p => p.mes).filter(Boolean))].sort().reverse();
+  selMes.innerHTML = '<option value="">Mes específico</option>' +
+    mesesDisp.map(m => {
+      const [y, mo] = m.split('-');
+      return `<option value="${m}"${m === currentMes ? ' selected' : ''}>${(nombres[mo]||mo)} ${y}</option>`;
+    }).join('');
+
+  const selCli = document.getElementById('resumen-cliente');
+  const currentCli = selCli?.value || '';
+  selCli.innerHTML = '<option value="">Todos los clientes</option>' +
+    clientes.filter(c => c.activo).sort((a,b) => a.nombre.localeCompare(b.nombre))
+      .map(c => `<option value="${c.id}"${c.id === currentCli ? ' selected' : ''}>${c.nombre}</option>`)
+      .join('');
+
+  const selProd = document.getElementById('resumen-producto');
+  const currentProd = selProd?.value || '';
+  selProd.innerHTML = '<option value="">Todos los productos</option>' +
+    productos.filter(p => p.disponible !== 'borrado').sort((a,b) => a.nombre.localeCompare(b.nombre))
+      .map(p => `<option value="${p.id}"${p.id === currentProd ? ' selected' : ''}>${p.nombre}</option>`)
+      .join('');
+}
+
 function renderResumen() {
-  const periodo = (document.getElementById('resumen-periodo')?.value) || 'mes';
+  const periodo      = (document.getElementById('resumen-periodo')?.value)  || 'mes';
+  const filtroMes    = document.getElementById('resumen-mes')?.value        || '';
+  const filtroCliente= document.getElementById('resumen-cliente')?.value    || '';
+  const filtroProducto = document.getElementById('resumen-producto')?.value || '';
   const hoy = new Date();
   const mesActual = hoy.toISOString().slice(0, 7);
   const anioActual = hoy.getFullYear().toString();
@@ -2063,7 +2109,9 @@ function renderResumen() {
   const activos = pedidos.filter(p => p.estado !== 'Cancelado');
 
   let lista;
-  if (periodo === 'mes') {
+  if (filtroMes) {
+    lista = activos.filter(p => p.mes === filtroMes);
+  } else if (periodo === 'mes') {
     lista = activos.filter(p => p.mes === mesActual);
   } else if (periodo === '3meses') {
     const hace3 = new Date(hoy); hace3.setMonth(hoy.getMonth() - 2);
@@ -2074,6 +2122,9 @@ function renderResumen() {
   } else {
     lista = activos;
   }
+
+  if (filtroCliente)  lista = lista.filter(p => p.clienteId === filtroCliente);
+  if (filtroProducto) lista = lista.filter(p => p.items.some(i => i.productoId === filtroProducto));
 
   const totalVentas = lista.reduce((s, p) => s + calcTotal(p.items), 0);
   const numPedidos  = lista.length;
@@ -2133,7 +2184,7 @@ function renderResumen() {
       </div>`).join('');
 
   // Tabla de meses
-  const meses = [...new Set(activos.map(p => p.mes).filter(Boolean))].sort().reverse().slice(0, 12);
+  const meses = [...new Set(lista.map(p => p.mes).filter(Boolean))].sort().reverse().slice(0, 12);
   const nombres = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio',
                     '07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
   const tbody = document.getElementById('resumen-tabla-meses');
@@ -2142,7 +2193,7 @@ function renderResumen() {
     return;
   }
   tbody.innerHTML = meses.map(mes => {
-    const rowPedidos = activos.filter(p => p.mes === mes);
+    const rowPedidos = lista.filter(p => p.mes === mes);
     const total   = rowPedidos.reduce((s, p) => s + calcTotal(p.items), 0);
     const pagado  = rowPedidos.filter(p => p.pago === 'Pagado').reduce((s, p) => s + calcTotal(p.items), 0);
     const [y, mo] = mes.split('-');
@@ -2165,6 +2216,7 @@ function renderAll() {
   renderPedidos();
   renderClientes();
   renderProductos();
+  populateResumenFiltros();
   renderResumen();
 }
 
