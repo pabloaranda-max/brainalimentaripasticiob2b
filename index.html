@@ -755,10 +755,7 @@
           <option value="3meses">Últimos 3 meses</option>
           <option value="anio">Este año</option>
           <option value="todo">Todo el tiempo</option>
-        </select>
-        <select id="resumen-mes" onchange="renderResumen()"
-          style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
-          <option value="">Mes específico</option>
+          <option disabled>──────────</option>
         </select>
         <select id="resumen-cliente" onchange="renderResumen()"
           style="font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.08em;border:1px solid var(--light-border);padding:8px 12px;background:var(--input-bg);color:var(--dark);cursor:pointer">
@@ -2073,14 +2070,24 @@ function populateResumenFiltros() {
   const nombres = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio',
                     '07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
 
-  const selMes = document.getElementById('resumen-mes');
-  const currentMes = selMes?.value || '';
+  const selPeriodo = document.getElementById('resumen-periodo');
+  const currentPeriodo = selPeriodo?.value || 'mes';
   const mesesDisp = [...new Set(activos.map(p => p.mes).filter(Boolean))].sort().reverse();
-  selMes.innerHTML = '<option value="">Mes específico</option>' +
+  // Mantener las 5 opciones fijas + separador, luego agregar meses
+  selPeriodo.innerHTML =
+    '<option value="mes">Este mes</option>' +
+    '<option value="3meses">Últimos 3 meses</option>' +
+    '<option value="anio">Este año</option>' +
+    '<option value="todo">Todo el tiempo</option>' +
+    '<option disabled>──────────</option>' +
     mesesDisp.map(m => {
       const [y, mo] = m.split('-');
-      return `<option value="${m}"${m === currentMes ? ' selected' : ''}>${(nombres[mo]||mo)} ${y}</option>`;
+      return `<option value="${m}"${m === currentPeriodo ? ' selected' : ''}>${(nombres[mo]||mo)} ${y}</option>`;
     }).join('');
+  // Restaurar selección si era una opción fija
+  if (['mes','3meses','anio','todo'].includes(currentPeriodo)) {
+    selPeriodo.value = currentPeriodo;
+  }
 
   const selCli = document.getElementById('resumen-cliente');
   const currentCli = selCli?.value || '';
@@ -2099,9 +2106,9 @@ function populateResumenFiltros() {
 
 function renderResumen() {
   const periodo      = (document.getElementById('resumen-periodo')?.value)  || 'mes';
-  const filtroMes    = document.getElementById('resumen-mes')?.value        || '';
   const filtroCliente= document.getElementById('resumen-cliente')?.value    || '';
   const filtroProducto = document.getElementById('resumen-producto')?.value || '';
+  const esMesEspecifico = /^\d{4}-\d{2}$/.test(periodo);
   const hoy = new Date();
   const mesActual = hoy.toISOString().slice(0, 7);
   const anioActual = hoy.getFullYear().toString();
@@ -2109,8 +2116,8 @@ function renderResumen() {
   const activos = pedidos.filter(p => p.estado !== 'Cancelado');
 
   let lista;
-  if (filtroMes) {
-    lista = activos.filter(p => p.mes === filtroMes);
+  if (esMesEspecifico) {
+    lista = activos.filter(p => p.mes === periodo);
   } else if (periodo === 'mes') {
     lista = activos.filter(p => p.mes === mesActual);
   } else if (periodo === '3meses') {
